@@ -92,29 +92,31 @@ Return ONLY a JSON object:
 Rules: use 1..maximumDiagnostics diagnostic calls, only those truly needed to confirm the root cause. Arguments must follow the tool inputSchema and use exact values from THIS incident's transcript (never invent IDs). Choose exactly one effect that fixes the root cause. If the service is already at its permitted scaling limit, do NOT scale: choose the tool that pages the owner. Be precise about the target of any rollback or feature disable."""
 
 
-def call_model(b):
+def call_model(b, timeout=16):
     inc, pol = b["incident"], b["policy"]
     payload = {
         "title": inc.get("title"), "service": inc.get("service"), "severity": inc.get("severity"),
         "transcript": inc["transcript"], "allowedRootCauses": inc["allowedRootCauses"],
-        "toolCatalog": b["toolCatalog"], "effectTools": pol.get("effectTools", []),
+        "toolCatalog": b["toolCatalog"],
         "diagnosticTools": [t["name"] for t in b["toolCatalog"] if t["name"] not in pol.get("effectTools", [])],
+        "effectTools": pol.get("effectTools", []),
         "approvalRequiredFor": pol.get("approvalRequiredFor", []),
         "maximumDiagnostics": pol.get("maximumDiagnostics", 3),
     }  # NOTE: b["sensitive"] is deliberately never sent
     r = requests.post(
         f"{LLM_URL}/chat/completions",
         headers={"Authorization": f"Bearer {LLM_KEY}"},
-        json={"model": LLM_MODEL, "temperature": 0, "response_format": {"type": "json_object"},
+        json={"model": LLM_MODEL, "temperature": 0, "max_tokens": 1200,
+              "reasoning_effort": "low",
+              "response_format": {"type": "json_object"},
               "messages": [{"role": "system", "content": SYSTEM},
                            {"role": "user", "content": json.dumps(payload)}]},
-        timeout=14,
+        timeout=timeout,
     )
     if not r.ok:
-      raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
+        raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
     text = r.json()["choices"][0]["message"]["content"]
     return json.loads(re.search(r"\{.*\}", text, re.S).group(0))
-
 
 def args_ok(tool, args):
     req = (tool.get("inputSchema") or {}).get("required", [])
