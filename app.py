@@ -109,9 +109,9 @@ def call_model(b):
                            {"role": "user", "content": json.dumps(payload)}]},
         timeout=14,
     )
-        if not r.ok:
-          raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
-        text = r.json()["choices"][0]["message"]["content"]
+    if not r.ok:
+      raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
+    text = r.json()["choices"][0]["message"]["content"]
     return json.loads(re.search(r"\{.*\}", text, re.S).group(0))
 
 
