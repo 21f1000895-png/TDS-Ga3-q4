@@ -407,7 +407,7 @@ def create():
             raw = call_model(b)
             chat1 = time.time_ns()
             plan = check_plan(raw, b)
-          except Exception as e:
+        except Exception as e:
             print(f"PLANNER FAIL {type(e).__name__}: {str(e)[:400]}", flush=True)
             return err(502, "planner failed")  # nothing stored
         S = {"runId": rid, "marker": b["publicMarker"], "agentName": b["agentName"], "hash": hsh,
