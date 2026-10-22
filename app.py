@@ -109,8 +109,9 @@ def call_model(b):
                            {"role": "user", "content": json.dumps(payload)}]},
         timeout=14,
     )
-    r.raise_for_status()
-    text = r.json()["choices"][0]["message"]["content"]
+        if not r.ok:
+          raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
+        text = r.json()["choices"][0]["message"]["content"]
     return json.loads(re.search(r"\{.*\}", text, re.S).group(0))
 
 
@@ -406,7 +407,8 @@ def create():
             raw = call_model(b)
             chat1 = time.time_ns()
             plan = check_plan(raw, b)
-        except Exception:
+          except Exception as e:
+            print(f"PLANNER FAIL {type(e).__name__}: {str(e)[:400]}", flush=True)
             return err(502, "planner failed")  # nothing stored
         S = {"runId": rid, "marker": b["publicMarker"], "agentName": b["agentName"], "hash": hsh,
              "traceId": ctx[0] if ctx else hexid(16), "parentSpanId": ctx[1] if ctx else None,
