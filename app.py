@@ -139,6 +139,14 @@ def check_plan(p, b):
         raise ValueError("bad evidence")
     cat_l = {n.lower(): n for n in cat}
     raw_d = p.get("diagnostics") or p.get("diagnosticCalls") or p.get("diagnostic_calls") or []
+    if not raw_d:
+        for v in p.values():
+            if isinstance(v, list) and v and all(isinstance(x, dict) for x in v) and \
+                    any(str(x.get("toolName") or x.get("name") or "").lower() in cat_l for x in v):
+                raw_d = [x for x in v if cat_l.get(str(x.get("toolName") or x.get("name") or "").lower()) not in eff_tools]
+                break
+    if not raw_d:
+        print("NO DIAG KEYS", list(p.keys()), "| diagnosticTools:", [n for n in cat if n not in eff_tools], flush=True)
     diags, loose, seen = [], [], set()
     for d in raw_d:
         if not isinstance(d, dict):
