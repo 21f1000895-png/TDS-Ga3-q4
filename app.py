@@ -417,9 +417,17 @@ def create():
         start = time.time_ns()
         try:
             chat0 = time.time_ns()
-            raw = call_model(b)
+            t_end = time.time() + 16
+            for attempt in (1, 2):
+                try:
+                    raw = call_model(b, 12 if attempt == 1 else max(3, t_end - time.time()))
+                    plan = check_plan(raw, b)
+                    break
+                except (ValueError, KeyError, AttributeError, TypeError) as e:
+                    print(f"PLAN RETRY {attempt}: {type(e).__name__} {str(e)[:200]}", flush=True)
+                    if attempt == 2 or time.time() > t_end - 3:
+                        raise
             chat1 = time.time_ns()
-            plan = check_plan(raw, b)
         except Exception as e:
             print(f"PLANNER FAIL {type(e).__name__}: {str(e)[:400]}", flush=True)
             return err(502, "planner failed")  # nothing stored
